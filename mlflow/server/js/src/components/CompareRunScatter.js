@@ -39,30 +39,34 @@ class CompareRunScatter extends Component {
         x: this.paramKeys.length > 0 ?
         {
           key: this.paramKeys[0],
-          isMetric: false
+          axisType: "param"
         } : {
           key: this.metricKeys[1],
-          isMetric: true
+          axisType: "metric"
         },
         y: this.metricKeys.length > 0 ?
         {
           key: this.metricKeys[0],
-          isMetric: true
+          axisType: "metric"
         } : {
           key: this.paramKeys[1],
-          isMetric: false
+          axisType: "param"
         }
       };
     }
   }
 
   /**
-   * Get the value of the metric/param described by {key, isMetric}, in run i
+   * Get the value of the metric/param/metadata described by {key, axisType}, in run i
    */
-  getValue(i, {key, isMetric}) {
-    const value = CompareRunUtil.findInList(
-      (isMetric ? this.props.metricLists : this.props.paramLists)[i], key);
-    return value === undefined ? value : value.value;
+  getValue(i, {key, axisType}) {
+    if (axisType === "date") {
+      return Utils.formatTimestamp(this.props.runInfos[i].start_time);
+    } else {
+      const value = CompareRunUtil.findInList(
+        (axisType === "metric" ? this.props.metricLists : this.props.paramLists)[i], key);
+      return value === undefined ? value : value.value;
+    }
   }
 
   /**
@@ -157,6 +161,16 @@ class CompareRunScatter extends Component {
     </div>);
   }
 
+  getSelectedOptionId(axis) {
+    if (this.state[axis].axisType === "date") {
+      return "date";
+    } else if (this.state[axis].axisType === "metric") {
+      return "metric-" + this.state[axis].key;
+    } else {
+      return "param-" + this.state[axis].key;
+    }
+  }
+
   renderSelect(axis) {
     return (
       <select
@@ -164,18 +178,24 @@ class CompareRunScatter extends Component {
         id={axis + "-axis-selector"}
         onChange={(e) => {
           const [prefix, ...keyParts] = e.target.value.split("-");
-          const key = keyParts.join("-");
-          const isMetric = prefix === "metric";
-          this.setState({[axis]: {isMetric, key}});
+          const key = prefix === "date" ? "Date" : keyParts.join("-");
+          this.setState({[axis]: {axisType: prefix, key}});
         }}
-        value={(this.state[axis].isMetric ? "metric-" : "param-") + this.state[axis].key}
+        value={this.getSelectedOptionId(axis)}
       >
-        <optgroup label="Parameter">
+        {axis === "x" ?
+          <optgroup label="Run Info">
+            <option key="date" value="date">Date</option>
+          </optgroup>
+          :
+          null
+        }
+        <optgroup label="Parameters">
           {this.paramKeys.map((p) =>
             <option key={"param-" + p} value={"param-" + p}>{p}</option>
           )}
         </optgroup>
-        <optgroup label="Metric">
+        <optgroup label="Metrics">
           {this.metricKeys.map((m) =>
             <option key={"metric-" + m} value={"metric-" + m}>{m}</option>
           )}
