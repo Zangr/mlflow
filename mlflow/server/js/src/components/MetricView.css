@@ -46,4 +46,5 @@ div.MetricView .recharts-tooltip-item-value, .recharts-tooltip-item-separator {
 
 .metrics-plot-container .metrics-plot-view-container {
   flex: 1;
+  max-width: 1200px;
 }
