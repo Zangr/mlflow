@@ -31,6 +31,13 @@ class CompareRunScatter extends Component {
     this.metricKeys = CompareRunUtil.getKeys(this.props.metricLists, false);
     this.paramKeys = CompareRunUtil.getKeys(this.props.paramLists, false);
 
+    // Compute each run's position in order of date, so we can display things by run order instead
+    // of the actual date that they ran.
+    this.dateOrders = new Array(this.props.runInfos.length);
+    const pairs = this.props.runInfos.map((runInfo, index) => ({index, time: runInfo.start_time}));
+    pairs.sort((a, b) => a.time - b.time);
+    pairs.forEach((p, newIndex) => this.dateOrders[p.index] = newIndex + 1);
+
     if (this.paramKeys.length + this.metricKeys.length < 2) {
       this.state = {disabled: true};
     } else {
@@ -51,6 +58,10 @@ class CompareRunScatter extends Component {
         } : {
           key: this.paramKeys[1],
           axisType: "param"
+        },
+        z: {
+          key: "none",
+          axisType: "none"
         }
       };
     }
@@ -62,6 +73,8 @@ class CompareRunScatter extends Component {
   getValue(i, {key, axisType}) {
     if (axisType === "date") {
       return Utils.formatTimestamp(this.props.runInfos[i].start_time);
+    } else if (axisType === "order") {
+      return this.dateOrders[i];
     } else {
       const value = CompareRunUtil.findInList(
         (axisType === "metric" ? this.props.metricLists : this.props.paramLists)[i], key);
@@ -85,6 +98,7 @@ class CompareRunScatter extends Component {
 
     const xs = [];
     const ys = [];
+    const zs = this.state.z.axisType !== "none" ? [] : null;
     const tooltips = [];
 
     this.props.runInfos.forEach((_, index) => {
@@ -92,6 +106,13 @@ class CompareRunScatter extends Component {
       const y = this.getValue(index, this.state.y);
       if (x === undefined || y === undefined) {
         return;
+      }
+      if (zs !== null) {
+        const z = this.getValue(index, this.state.z);
+        if (z === undefined) {
+          return;
+        }
+        zs.push(z);
       }
       xs.push(x);
       ys.push(y);
@@ -104,12 +125,16 @@ class CompareRunScatter extends Component {
         <div className="row">
           <form className="col-xs-3">
             <div className="form-group">
-              <label htmlFor="y-axis-selector">X-axis:</label>
+              <label htmlFor="y-axis-selector">X Axis:</label>
               {this.renderSelect("x")}
             </div>
             <div className="form-group">
-              <label htmlFor="y-axis-selector">Y-axis:</label>
+              <label htmlFor="y-axis-selector">Y Axis:</label>
               {this.renderSelect("y")}
+            </div>
+            <div className="form-group">
+              <label htmlFor="z-axis-selector">Color Scale:</label>
+              {this.renderSelect("z")}
             </div>
           </form>
           <div className="col-xs-9">
@@ -124,7 +149,12 @@ class CompareRunScatter extends Component {
                   mode: 'markers',
                   marker: {
                     size: 10,
-                    color: "rgba(200, 50, 100, .75)"
+                    opacity: 0.8,
+                    color: (zs === null ? "rgb(200, 50, 100)" : zs),
+                    colorscale: "RdBu",
+                    colorbar: (zs === null ? null : {
+                      title: this.encodeHtml(Utils.truncateString(this.state["z"].key, keyLength))
+                    })
                   },
                 },
               ]}
@@ -162,8 +192,13 @@ class CompareRunScatter extends Component {
   }
 
   getSelectedOptionId(axis) {
+    if (axis === "z") {
+      return null;
+    }
     if (this.state[axis].axisType === "date") {
       return "date";
+    } else if (this.state[axis].axisType === "order") {
+      return "order";
     } else if (this.state[axis].axisType === "metric") {
       return "metric-" + this.state[axis].key;
     } else {
@@ -178,13 +213,26 @@ class CompareRunScatter extends Component {
         id={axis + "-axis-selector"}
         onChange={(e) => {
           const [prefix, ...keyParts] = e.target.value.split("-");
-          const key = prefix === "date" ? "Date" : keyParts.join("-");
+          let key;
+          if (prefix === "date") {
+            key = "Date";
+          } else if (prefix === "order") {
+            key = "Execution Order";
+          } else {
+            key = keyParts.join("-");
+          }
           this.setState({[axis]: {axisType: prefix, key}});
         }}
         value={this.getSelectedOptionId(axis)}
       >
+        {axis === "z" ?
+          <option key="none" value="none">(None)</option>
+          :
+          null
+        }
         {axis === "x" ?
-          <optgroup label="Run Info">
+          <optgroup label="Run Properties">
+            <option key="order" value="order">Execution Order</option>
             <option key="date" value="date">Date</option>
           </optgroup>
           :
