@@ -16,9 +16,14 @@ import { Spinner } from '../../components/Spinner';
 import { Error404View } from '../../common/components/Error404View';
 import { shouldRender404 } from '../../common/utils';
 import { modelListPageRoute } from '../routes';
+import Utils from '../../utils/Utils';
 
 export class ModelPage extends React.Component {
   static propTypes = {
+    // own props
+    history: PropTypes.object.isRequired,
+    match: PropTypes.object.isRequired,
+    // connected props
     modelName: PropTypes.string.isRequired,
     model: PropTypes.object,
     modelVersions: PropTypes.array,
@@ -26,7 +31,6 @@ export class ModelPage extends React.Component {
     getRegisteredModelApi: PropTypes.func.isRequired,
     updateRegisteredModelApi: PropTypes.func.isRequired,
     deleteRegisteredModelApi: PropTypes.func.isRequired,
-    history: PropTypes.object.isRequired,
     apis: PropTypes.object.isRequired,
   };
 
@@ -61,6 +65,28 @@ export class ModelPage extends React.Component {
     );
   };
 
+  // @databricks-only
+  // Launch edit permission modal from Databricks window
+  showEditPermissionModal = () => {
+    const { model } = this.props;
+    window.parent.postMessage({
+      // Note: Please keep this type name in sync with PostMessage.js
+      type: 'EDIT_REGISTERED_MODEL_PERMISSION',
+      registeredModel: model,
+    }, window.parent.location.origin);
+  };
+
+  // @databricks-only
+  // Handle postMessage after permission modal edit success from Databricks window
+  handleEditPermissionSuccessCallbackPostMessage = (message) => {
+    if (!Utils.isMessageFromSameOrigin(message)) return;
+    const { type } = message.data;
+    if (type === 'EDIT_REGISTERED_MODEL_PERMISSION_SUCCESS') {
+      // TODO(sueann): apply UI changes based on permission changes
+      console.log('handleEditPermissionSuccessCallbackPostMessage', message);
+    }
+  };
+
   loadData = (isInitialLoading) => {
     const { modelName } = this.props;
     return Promise.all([
@@ -82,7 +108,7 @@ export class ModelPage extends React.Component {
   pollModelVersions = () => {
     const { modelName, apis } = this.props;
     const pollRequest = apis[this.searchModelVersionsApiId];
-    if (!(pollRequest && pollRequest.active)) {
+    if (!(pollRequest && pollRequest.active) && !document.hidden) {
       this.props
         .searchModelVersionsApi({ name: modelName }, this.searchModelVersionsApiId)
         .catch(console.error);
@@ -92,10 +118,12 @@ export class ModelPage extends React.Component {
   componentDidMount() {
     this.loadData(true);
     this.pollIntervalId = setInterval(this.pollModelVersions, POLL_INTERVAL);
+    window.addEventListener('message', this.handleEditPermissionSuccessCallbackPostMessage);
   }
 
   componentWillUnmount() {
     clearInterval(this.pollIntervalId);
+    window.removeEventListener('message', this.handleEditPermissionSuccessCallbackPostMessage);
   }
 
   render() {
@@ -125,6 +153,7 @@ export class ModelPage extends React.Component {
                   modelVersions={modelVersions}
                   handleEditDescription={this.handleEditDescription}
                   handleDelete={this.handleDelete}
+                  showEditPermissionModal={this.showEditPermissionModal}
                   history={history}
                 />
               );

@@ -19,9 +19,11 @@ import Utils from '../../utils/Utils';
 
 class RegisterModelButton extends React.Component {
   static propTypes = {
+    // own props
     disabled: PropTypes.bool.isRequired,
     runUuid: PropTypes.string.isRequired,
     modelPath: PropTypes.string,
+    // connected props
     modelByName: PropTypes.object.isRequired,
     createRegisteredModelApi: PropTypes.func.isRequired,
     createModelVersionApi: PropTypes.func.isRequired,

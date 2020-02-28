@@ -1,8 +1,10 @@
 @import 'components/ModelView.css';
+@import '../model-serving/components/ServingView.css';
 @import 'components/ModelVersionTable.css';
+@import 'components/ModelActivitiesList.css';
+@import 'components/TransitionRequestForm.css';
 @import 'components/ModelVersionView.css';
 @import 'components/ModelStageTransitionDropdown.css';
-@import 'overrides/style-overrides.css';
 
 /** TODO(Zangr) migrate globally common components and styles into src/common folder */
 .metadata-container {

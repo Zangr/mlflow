@@ -10,6 +10,7 @@ export const shouldRender404 = (requests, requestIdsToCheck) => {
   });
 };
 
+
 // TODO(Zangr) move to /experiment-tracking after folder refactor
 export const ColumnTypes = {
   ATTRIBUTES: 'attributes',

@@ -2,14 +2,19 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { modelListPageRoute, getModelPageRoute } from '../routes';
+import PermissionUtils from '../../utils/PermissionUtils';
 import Utils from '../../utils/Utils';
-import { ModelStageTransitionDropdown} from './ModelStageTransitionDropdown';
-import { Dropdown, Icon, Menu, Modal, Alert, Descriptions } from 'antd';
+import { ModelStageTransitionDropdown } from './ModelStageTransitionDropdown';
+import { PendingRequestsTable } from './PendingRequestsTable';
+import { ModelActivitiesList } from './ModelActivitiesList';
+import { Dropdown, Icon, Menu, Modal, Alert, Descriptions, Tooltip } from 'antd';
 import {
   ModelVersionStatus,
   StageTagComponents,
   ModelVersionStatusIcons,
   DefaultModelVersionStatusMessages,
+  ACTIVE_STAGES,
+  MODEL_VERSION_DELETE_MENU_ITEM_DISABLED_TOOLTIP_TEXT,
 } from '../constants';
 import Routers from '../../Routes';
 import { CollapsibleSection } from '../../common/components/CollapsibleSection';
@@ -19,9 +24,14 @@ export class ModelVersionView extends React.Component {
   static propTypes = {
     modelName: PropTypes.string,
     modelVersion: PropTypes.object,
+    activities: PropTypes.arrayOf(Object),
+    transitionRequests: PropTypes.arrayOf(Object),
     runInfo: PropTypes.object,
     runDisplayName: PropTypes.string,
     handleStageTransitionDropdownSelect: PropTypes.func.isRequired,
+    handlePendingRequestApproval: PropTypes.func.isRequired,
+    handlePendingRequestRejection: PropTypes.func.isRequired,
+    handlePendingRequestDeletion: PropTypes.func.isRequired,
     deleteModelVersionApi: PropTypes.func.isRequired,
     handleEditDescription: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
@@ -32,6 +42,11 @@ export class ModelVersionView extends React.Component {
     isDeleteModalConfirmLoading: false,
     showDescriptionEditor: false,
   };
+
+  componentDidMount() {
+    const pageTitle = `${this.props.modelName} v${this.props.modelVersion.version} - MLflow Model`;
+    Utils.updatePageTitle(pageTitle);
+  }
 
   handleDeleteConfirm = () => {
     const { modelName, modelVersion, history } = this.props;
@@ -84,11 +99,22 @@ export class ModelVersionView extends React.Component {
   renderBreadCrumbDropdown() {
     const menu = (
       <Menu>
-        <Menu.Item onClick={this.showDeleteModal}>Delete</Menu.Item>
+        {ACTIVE_STAGES.includes(this.props.modelVersion.current_stage) ?
+          (
+            <Menu.Item disabled className='delete'>
+              <Tooltip title={MODEL_VERSION_DELETE_MENU_ITEM_DISABLED_TOOLTIP_TEXT}>
+                Delete
+              </Tooltip>
+            </Menu.Item>
+          ) : (
+            <Menu.Item onClick={this.showDeleteModal} className='delete'>
+              Delete
+            </Menu.Item>
+          )}
       </Menu>
     );
     return (
-      <Dropdown overlay={menu} trigger={['click']}>
+      <Dropdown overlay={menu} trigger={['click']} className='breadcrumb-dropdown'>
         <Icon type='caret-down' className='breadcrumb-caret'/>
       </Dropdown>
     );
@@ -112,24 +138,24 @@ export class ModelVersionView extends React.Component {
     return null;
   }
 
-  componentDidMount() {
-    document.title = `${this.props.modelName} v${this.props.modelVersion.version} - MLflow Model`;
-  }
-
   render() {
     const {
       modelName,
       modelVersion,
+      activities,
+      transitionRequests,
       runInfo,
       runDisplayName,
       handleStageTransitionDropdownSelect,
+      handlePendingRequestApproval,
+      handlePendingRequestRejection,
+      handlePendingRequestDeletion,
     } = this.props;
     const { status, description } = modelVersion;
     const { isDeleteModalVisible, isDeleteModalConfirmLoading, showDescriptionEditor } = this.state;
     const chevron = <i className='fas fa-chevron-right breadcrumb-chevron' />;
     const breadcrumbItemClass = 'truncate-text single-line breadcrumb-title';
     const editIcon = <a onClick={this.startEditingDescription}><Icon type='form' /></a>;
-
     return (
       <div>
         {/* Breadcrumbs */}
@@ -141,7 +167,9 @@ export class ModelVersionView extends React.Component {
           </Link>
           {chevron}
           <span className={breadcrumbItemClass}>Version {modelVersion.version}</span>
-          {status !== ModelVersionStatus.PENDING_REGISTRATION && this.renderBreadCrumbDropdown()}
+          {status !== ModelVersionStatus.PENDING_REGISTRATION &&
+            PermissionUtils.permissionLevelCanManage(modelVersion.permission_level) &&
+            this.renderBreadCrumbDropdown()}
         </h1>
         {this.renderStatusAlert()}
 
@@ -155,6 +183,7 @@ export class ModelVersionView extends React.Component {
             {status === ModelVersionStatus.READY ? (
               <ModelStageTransitionDropdown
                 currentStage={modelVersion.current_stage}
+                permissionLevel={modelVersion.permission_level}
                 onSelect={handleStageTransitionDropdownSelect}
               />
             ) : StageTagComponents[modelVersion.current_stage]}
@@ -175,7 +204,15 @@ export class ModelVersionView extends React.Component {
 
         {/* Page Sections */}
         <CollapsibleSection
-          title={<span>Description {showDescriptionEditor ? null : editIcon}</span>}
+          title={
+            <span>
+              Description{' '}
+              {!showDescriptionEditor &&
+              PermissionUtils.permissionLevelCanEdit(modelVersion.permission_level)
+                ? editIcon
+                : null}
+            </span>
+          }
           forceOpen={showDescriptionEditor}
         >
           <EditableNote
@@ -184,6 +221,17 @@ export class ModelVersionView extends React.Component {
             onCancel={this.handleCancelEditDescription}
             showEditor={showDescriptionEditor}
           />
+        </CollapsibleSection>
+        <CollapsibleSection title='Pending Requests'>
+          <PendingRequestsTable
+            pendingRequests={transitionRequests}
+            onPendingRequestApproval={handlePendingRequestApproval}
+            onPendingRequestRejection={handlePendingRequestRejection}
+            onPendingRequestDeletion={handlePendingRequestDeletion}
+          />
+        </CollapsibleSection>
+        <CollapsibleSection title='Activities'>
+          <ModelActivitiesList activities={activities}/>
         </CollapsibleSection>
         <Modal
           title="Delete Model Version"

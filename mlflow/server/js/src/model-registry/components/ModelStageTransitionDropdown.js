@@ -2,11 +2,16 @@ import React from 'react';
 import { Dropdown, Menu, Icon, Modal } from 'antd';
 import PropTypes from 'prop-types';
 import { Stages, StageTagComponents, ActivityTypes } from '../constants';
+import TransitionRequestForm from './TransitionRequestForm';
+import DirectTransitionForm from './DirectTransitionForm';
+import PermissionUtils from '../../utils/PermissionUtils';
+
 import _ from 'lodash';
 
 export class ModelStageTransitionDropdown extends React.Component {
   static propTypes = {
     currentStage: PropTypes.string,
+    permissionLevel: PropTypes.string,
     onSelect: PropTypes.func,
   };
 
@@ -20,6 +25,8 @@ export class ModelStageTransitionDropdown extends React.Component {
     handleConfirm: undefined,
   };
 
+  transitionFormRef = React.createRef();
+
   handleMenuItemClick = (activity) => {
     const { onSelect } = this.props;
     this.setState({
@@ -29,7 +36,9 @@ export class ModelStageTransitionDropdown extends React.Component {
         onSelect &&
         (() => {
           this.setState({ confirmModalVisible: false });
-          this.props.onSelect(activity);
+          const comment = this.transitionFormRef.current.getFieldValue('comment');
+          this.transitionFormRef.current.resetFields();
+          this.props.onSelect(activity, comment);
         }),
     });
   };
@@ -45,19 +54,35 @@ export class ModelStageTransitionDropdown extends React.Component {
   };
 
   getMenu() {
-    const { currentStage, onSelect } = this.props;
+    const { currentStage, onSelect, permissionLevel } = this.props;
     const nonCurrentStages = this.getNoneCurrentStages(currentStage);
     return (
       <Menu onSelect={onSelect}>
         {nonCurrentStages.map((stage) => (
           <Menu.Item
+            key={`request-transition-to-${stage}`}
+            onClick={() =>
+              this.handleMenuItemClick({
+                type: ActivityTypes.REQUESTED_TRANSITION,
+                to_stage: stage,
+              })
+            }
+          >
+            Request transition to &nbsp;&nbsp;&nbsp;
+            <i className='fas fa-long-arrow-alt-right' />
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            {StageTagComponents[stage]}
+          </Menu.Item>
+        ))}
+        {PermissionUtils.permissionLevelCanManage(permissionLevel) && <Menu.Divider />}
+        {PermissionUtils.permissionLevelCanManage(permissionLevel) &&
+          nonCurrentStages.map((stage) => (
+          <Menu.Item
             key={`transition-to-${stage}`}
             onClick={() =>
               this.handleMenuItemClick({
                 type: ActivityTypes.APPLIED_TRANSITION,
-                model_registry_data: {
-                  to_stage: stage,
-                },
+                to_stage: stage,
               })
             }
           >
@@ -74,6 +99,17 @@ export class ModelStageTransitionDropdown extends React.Component {
   renderConfirmModal() {
     const { confirmModalVisible, confirmingActivity, handleConfirm } = this.state;
     if (confirmingActivity) {
+      let formComponent;
+      switch (confirmingActivity.type) {
+        case ActivityTypes.REQUESTED_TRANSITION:
+          formComponent = <TransitionRequestForm ref={this.transitionFormRef} />;
+          break;
+        case ActivityTypes.APPLIED_TRANSITION:
+          formComponent = <DirectTransitionForm ref={this.transitionFormRef} />;
+          break;
+        default:
+          formComponent = null;
+      }
       return (
         <Modal
           title='Stage Transition'
@@ -82,6 +118,7 @@ export class ModelStageTransitionDropdown extends React.Component {
           onCancel={this.handleConfirmModalCancel}
         >
           {renderActivityDescription(confirmingActivity)}
+          {formComponent}
         </Modal>
       );
     }
@@ -109,13 +146,17 @@ export class ModelStageTransitionDropdown extends React.Component {
 }
 
 export const renderActivityDescription = (activity) => {
-  return activity ? (
-    <div>
-      Transition to
-      &nbsp;&nbsp;&nbsp;
-      <i className='fas fa-long-arrow-alt-right' />
-      &nbsp;&nbsp;&nbsp;&nbsp;
-      {StageTagComponents[activity.model_registry_data.to_stage]}
-    </div>
-  ) : null;
+  if (activity) {
+    const isRequestTransition = activity.type === ActivityTypes.REQUESTED_TRANSITION;
+    return (
+      <div>
+        {isRequestTransition ? 'Request transition to' : 'Transition to'}
+        &nbsp;&nbsp;&nbsp;
+        <i className='fas fa-long-arrow-alt-right' />
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        {StageTagComponents[activity.to_stage]}
+      </div>
+    );
+  }
+  return null;
 };

@@ -21,6 +21,7 @@ import { Experiment, Param, RunInfo, RunTag, ExperimentTag } from '../sdk/Mlflow
 import { ArtifactNode } from '../utils/ArtifactUtils';
 import { metricsByRunUuid, latestMetricsByRunUuid } from './MetricReducer';
 import modelRegistryReducers from '../model-registry/reducers';
+import modelServingReducers from '../model-serving/reducers';
 import _ from 'lodash';
 
 export const getExperiments = (state) => {
@@ -36,11 +37,6 @@ const experimentsById = (state = {}, action) => {
     case fulfilled(LIST_EXPERIMENTS_API): {
       let newState = Object.assign({}, state);
       if (action.payload && action.payload.experiments) {
-        // reset experimentsById state
-        // doing this enables us to capture if an experiment was deleted
-        // if we kept the old state and updated the experiments based on their id,
-        // deleted experiments (via CLI or UI) would remain until the page is refreshed
-        newState = {};
         action.payload.experiments.forEach((eJson) => {
           const experiment = Experiment.fromJs(eJson);
           newState = Object.assign(newState, { [experiment.getExperimentId()]: experiment });
@@ -330,6 +326,7 @@ const entities = combineReducers({
   artifactsByRunUuid,
   artifactRootUriByRunUuid,
   ...modelRegistryReducers,
+  ...modelServingReducers,
 });
 
 export const getSharedParamKeysByRunUuids = (runUuids, state) =>

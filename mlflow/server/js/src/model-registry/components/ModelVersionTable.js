@@ -5,17 +5,18 @@ import { Link } from 'react-router-dom';
 import Utils from '../../utils/Utils';
 import {
   ACTIVE_STAGES,
+  EMPTY_CELL_PLACEHOLDER,
   StageTagComponents,
   ModelVersionStatusIcons,
   modelVersionStatusIconTooltips,
 } from '../constants';
 import { getModelVersionPageRoute } from '../routes';
-import { ConstantOverrides } from '../overrides/constant-overrides';
 
 const VERSION_COLUMN = 'Version';
 const CREATED_AT_COLUMN = 'Registered at';
 const CREATED_BY_COLUMN = 'Created by';
 const STAGE_COLUMN = 'Stage';
+const PENDING_REQUESTS_COLUMN = 'Pending Requests';
 
 export class ModelVersionTable extends React.Component {
   static propTypes = {
@@ -45,6 +46,7 @@ export class ModelVersionTable extends React.Component {
       },
       {
         title: VERSION_COLUMN,
+        className: 'model-version',
         dataIndex: 'version',
         render: (version) => (
           <Link to={getModelVersionPageRoute(modelName, version)}>
@@ -68,6 +70,11 @@ export class ModelVersionTable extends React.Component {
           return StageTagComponents[currentStage];
         },
       },
+      {
+        title: PENDING_REQUESTS_COLUMN,
+        dataIndex: 'open_requests',
+        render: (requests) => (requests ? requests.length : EMPTY_CELL_PLACEHOLDER),
+      },
     ];
   };
 
@@ -90,5 +97,3 @@ export class ModelVersionTable extends React.Component {
     );
   }
 }
-
-export default ConstantOverrides.ModelVersionTable || ModelVersionTable;

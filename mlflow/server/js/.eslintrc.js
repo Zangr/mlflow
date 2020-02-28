@@ -1,8 +1,5 @@
 module.exports = {
-  'extends': [
-    'airbnb-base',
-    'react-app',
-  ],
+  'extends': 'airbnb-base',
   'parser': 'babel-eslint',
   'plugins': [
     'react',
@@ -37,7 +34,7 @@ module.exports = {
       },
     },
     'react': {
-      'version': 'detect',
+      'version': '0.14.8',
     },
   },
   'rules': {
@@ -53,7 +50,7 @@ module.exports = {
     'callback-return': 2,
     'camelcase': "off",
     'class-methods-use-this': 0,
-    'comma-dangle': [2, "always-multiline"],
+    'comma-dangle': ['error', 'always-multiline'],
     'comma-spacing': 2,
     'comma-style': 2,
     'computed-property-spacing': 2,
@@ -129,7 +126,7 @@ module.exports = {
     }],
     'max-lines': [2, 1000],
     'max-nested-callbacks': 2,
-    'max-params': [2, 12],
+    'max-params': [2, 8],
     'max-statements': 0,
     'max-statements-per-line': 2,
     'multiline-ternary': 0,
@@ -341,11 +338,7 @@ module.exports = {
     'sort-keys': 0,
     'sort-vars': 0,
     'space-before-blocks': 2,
-    'space-before-function-paren': [2, {
-      'anonymous': 'always',
-      'named': 'never',
-      'asyncArrow': 'always',
-    }],
+    'space-before-function-paren': [2, 'never'],
     'space-in-parens': 2,
     'space-infix-ops': 2,
     'space-unary-ops': 0,

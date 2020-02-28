@@ -4,6 +4,7 @@ import notebookSvg from '../static/notebook.svg';
 import emptySvg from '../static/empty.svg';
 import laptopSvg from '../static/laptop.svg';
 import projectSvg from '../static/project.svg';
+import jobSvg from '../static/job.svg';
 import qs from 'qs';
 import { MLFLOW_INTERNAL_PREFIX } from './TagUtils';
 import { message } from 'antd';
@@ -242,6 +243,17 @@ class Utils {
         </a>);
       }
       return res;
+    } else if (sourceType === "JOB") {
+      const jobIdTag = 'mlflow.databricks.jobID';
+      const jobRunIdTag = 'mlflow.databricks.jobRunID';
+      const jobId = tags && tags[jobIdTag] && tags[jobIdTag].value;
+      const jobRunId = tags && tags[jobRunIdTag] && tags[jobRunIdTag].value;
+      if (jobId && jobRunId) {
+        let url = Utils.setQueryParams(window.location.origin, queryParams);
+        url += `#job/${jobId}/run/${jobRunId}`;
+        res = (<a title={res} href={url} target='_top'>{res}</a>);
+      }
+      return res;
     } else {
       return res;
     }
@@ -263,6 +275,8 @@ class Utils {
       return <img alt="" title="Local Source" style={imageStyle} src={laptopSvg} />;
     } else if (sourceType === "PROJECT") {
       return <img alt="" title="Project" style={imageStyle} src={projectSvg} />;
+    } else if (sourceType === "JOB") {
+      return <img alt="" title="Job" style={imageStyle} src={jobSvg} />;
     }
     return <img alt="" style={imageStyle} src={emptySvg} />;
   }
@@ -273,13 +287,23 @@ class Utils {
    */
   static formatSource(tags) {
     const sourceName = Utils.getSourceName(tags);
+    const sourceType = Utils.getSourceType(tags);
     const entryPointName = Utils.getEntryPointName(tags);
-    if (Utils.getSourceType(tags) === "PROJECT") {
+    if (sourceType === "PROJECT") {
       let res = Utils.dropExtension(Utils.baseName(sourceName));
       if (entryPointName && entryPointName !== "main") {
         res += ":" + entryPointName;
       }
       return res;
+    } else if (sourceType === "JOB") {
+      const jobIdTag = 'mlflow.databricks.jobID';
+      const jobRunIdTag = 'mlflow.databricks.jobRunID';
+      const jobId = tags && tags[jobIdTag] && tags[jobIdTag].value;
+      const jobRunId = tags && tags[jobRunIdTag] && tags[jobRunIdTag].value;
+      if (jobId && jobRunId) {
+        return `run ${jobRunId} of job ${jobId}`;
+      }
+      return sourceName;
     } else {
       return Utils.baseName(sourceName);
     }
@@ -381,69 +405,10 @@ class Utils {
     return requests.find((r) => r.id === requestId);
   }
 
-  static getCurveKey(runId, metricName) {
-    return `${runId}-${metricName}`;
-  }
-
-  static getCurveInfoFromKey(curvePair) {
-    const splitPair = curvePair.split("-");
-    return {runId: splitPair[0], metricName: splitPair.slice(1, splitPair.length).join("-")};
-  }
-
-  /**
-   * Return metric plot state from the current URL
-   *
-   * The reverse transformation (from metric plot component state to URL) is exposed as a component
-   * method, as it only needs to be called within the MetricsPlotPanel component
-   *
-   * See documentation in Routes.getMetricPageRoute for descriptions of the individual fields
-   * within the returned state object.
-   *
-   * @param search - window.location.search component of the URL - in particular, the query string
-   *   from the URL.
-   */
-  static getMetricPlotStateFromUrl(search) {
-    const defaultState = {
-      selectedXAxis: 'relative',
-      selectedMetricKeys: [],
-      showPoint: false,
-      yAxisLogScale: false,
-      lineSmoothness: 0,
-      layout: {},
-    };
-    const params = qs.parse(search.slice(1, search.length));
-    if (!params) {
-      return defaultState;
-    }
-
-    const selectedXAxis = params['x_axis'] || 'relative';
-    const selectedMetricKeys = JSON.parse(params['plot_metric_keys']) ||
-        defaultState.selectedMetricKeys;
-    const showPoint = params['show_point'] === 'true';
-    const yAxisLogScale = params['y_axis_scale'] === 'log';
-    const lineSmoothness = params['line_smoothness'] ? parseFloat(params['line_smoothness']) : 0;
-    const layout = params['plot_layout'] ? JSON.parse(params['plot_layout']) : {autosize: true};
-    // Default to displaying all runs, i.e. to deselectedCurves being empty
-    const deselectedCurves = params['deselected_curves'] ?
-        JSON.parse(params['deselected_curves']) : [];
-    const lastLinearYAxisRange = params['last_linear_y_axis_range'] ?
-        JSON.parse(params['last_linear_y_axis_range']) : [];
-    return {
-      selectedXAxis,
-      selectedMetricKeys,
-      showPoint,
-      yAxisLogScale,
-      lineSmoothness,
-      layout,
-      deselectedCurves,
-      lastLinearYAxisRange,
-    };
-  }
-
-  static getPlotLayoutFromUrl(search) {
+  static getPlotMetricKeysFromUrl(search) {
     const params = qs.parse(search);
-    const layout = params["plot_layout"];
-    return layout ? JSON.parse(layout) : {};
+    const plotMetricKeysStr = params && params['plot_metric_keys'];
+    return plotMetricKeysStr ? JSON.parse(plotMetricKeysStr) : [];
   }
 
   static getSearchParamsFromUrl(search) {
@@ -507,8 +472,52 @@ class Utils {
     }
   }
 
+  static isMessageFromSameOrigin(messageEvent) {
+    // For Chrome, the origin property is in the event.originalEvent object.
+    const origin = messageEvent.origin || messageEvent.originalEvent.origin;
+    return window.location.origin === origin;
+  }
+
+  // @databricks-only
   static isModelRegistryEnabled() {
-    return true;
+    // TODO(Zangr) 2019-10-16 Non OSS feature flags should only be checked in databricks-edge files.
+    // Move this to databricks-edge folder before OSS model registry PR is out.
+    // eslint-disable-next-line no-restricted-globals
+    const { isModelRegistryEnabledInCurrentWorkspace } = top.settings || {};
+    // Only return false when it's set explicitly to a boolean false, undefined implies OSS env
+    return isModelRegistryEnabledInCurrentWorkspace !== false;
+  }
+
+  // @databricks-only
+  static isModelServingEnabled() {
+    // TODO(Zangr) 2019-10-16 Non OSS feature flags should only be checked in databricks-edge files.
+    // Move this to databricks-edge folder before OSS model registry PR is out.
+    // eslint-disable-next-line no-restricted-globals
+    const { isModelServingEnabledInCurrentWorkspace } = top.settings || {};
+    return isModelServingEnabledInCurrentWorkspace !== false;
+  }
+
+  // @databricks-only
+  static isAclCheckEnabledForModelRegistry() {
+    // TODO(Zangr) 2019-10-16 Non OSS feature flags should only be checked in databricks-edge files.
+    // Move this to databricks-edge folder before OSS model registry PR is out.
+    /* eslint-disable no-restricted-globals */
+    const {
+      aclChecksEnabledForModelRegistryInCurrentWorkspace,
+      enableWorkspaceAclsConfig,
+    } = top.settings || {};
+    /* eslint-disable no-restricted-globals */
+    return aclChecksEnabledForModelRegistryInCurrentWorkspace !== false &&
+      enableWorkspaceAclsConfig !== false;
+  }
+
+  // @databricks-only
+  static updatePageTitle(title) {
+    window.parent.postMessage({
+      // Please keep this type name in sync with PostMessage.js
+      type: 'UPDATE_TITLE',
+      title,
+    }, window.parent.location.origin);
   }
 }
 

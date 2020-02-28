@@ -13,13 +13,13 @@ import { Experiment } from '../sdk/MlflowMessages';
 import Utils from '../utils/Utils';
 import { NOTE_CONTENT_TAG, NoteInfo } from "../utils/NoteUtils";
 import BreadcrumbTitle from "./BreadcrumbTitle";
-import { RenameRunModal } from "./modals/RenameRunModal";
+import RenameRunModal from "./modals/RenameRunModal";
 import EditableTagsTableView from './EditableTagsTableView';
 import { Icon, Descriptions } from 'antd';
 import { CollapsibleSection } from '../common/components/CollapsibleSection';
 import { EditableNote } from '../common/components/EditableNote';
 
-class RunView extends Component {
+export class RunView extends Component {
   static propTypes = {
     runUuid: PropTypes.string.isRequired,
     run: PropTypes.object.isRequired,
@@ -41,7 +41,8 @@ class RunView extends Component {
   };
 
   componentDidMount() {
-    document.title = `${this.props.runDisplayName} - MLflow Run`;
+    const pageTitle = `${this.props.runDisplayName} - MLflow Run`;
+    Utils.updatePageTitle(pageTitle);
   }
 
   handleRenameRunClick = () => {
@@ -144,9 +145,10 @@ class RunView extends Component {
           </Dropdown>
           <RenameRunModal
             runUuid={runUuid}
+            experimentId={this.props.experimentId}
             onClose={this.hideRenameRunModal}
             runName={this.props.runName}
-            isOpen={this.state.showRunRenameModal} />
+            open={this.state.showRunRenameModal} />
         </div>
 
         {/* Metadata List */}

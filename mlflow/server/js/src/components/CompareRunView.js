@@ -17,9 +17,10 @@ import ParallelCoordinatesPlotPanel from './ParallelCoordinatesPlotPanel';
 
 const TabPane = Tabs.TabPane;
 
-class CompareRunView extends Component {
+export class CompareRunView extends Component {
   static propTypes = {
     experiment: PropTypes.instanceOf(Experiment).isRequired,
+    experimentId: PropTypes.number.isRequired,
     runInfos: PropTypes.arrayOf(RunInfo).isRequired,
     runUuids: PropTypes.arrayOf(String).isRequired,
     metricLists: PropTypes.arrayOf(Array).isRequired,
@@ -34,14 +35,14 @@ class CompareRunView extends Component {
   };
 
   componentDidMount() {
-    document.title = `Comparing ${this.props.runInfos.length} MLflow Runs`;
+    const pageTitle = `Comparing ${this.props.runInfos.length} MLflow Runs`;
+    Utils.updatePageTitle(pageTitle);
   }
 
   render() {
     const experiment = this.props.experiment;
     const experimentId = experiment.getExperimentId();
     const { runInfos, runNames } = this.props;
-
     return (
       <div className="CompareRunView">
         <div className="header-container">

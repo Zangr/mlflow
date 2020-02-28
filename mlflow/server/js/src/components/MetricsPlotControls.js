@@ -23,9 +23,6 @@ export class MetricsPlotControls extends React.Component {
     handleYAxisLogScaleChange: PropTypes.func.isRequired,
     handleLineSmoothChange: PropTypes.func.isRequired,
     chartType: PropTypes.string.isRequired,
-    initialLineSmoothness: PropTypes.number.isRequired,
-    yAxisLogScale: PropTypes.bool.isRequired,
-    showPoint: PropTypes.bool.isRequired,
   };
 
   handleMetricsSelectFilterChange = (text, option) =>
@@ -41,7 +38,7 @@ export class MetricsPlotControls extends React.Component {
   };
 
   render() {
-    const { chartType, yAxisLogScale, initialLineSmoothness, showPoint } = this.props;
+    const { chartType } = this.props;
     const lineSmoothnessTooltipText =
       'Make the line between points "smoother" based on generalized Catmull-Rom splines. ' +
       'Smoothing can be useful for displaying the ' +
@@ -56,7 +53,6 @@ export class MetricsPlotControls extends React.Component {
                 className='show-point-toggle'
                 checkedChildren='On'
                 unCheckedChildren='Off'
-                defaultChecked={showPoint}
                 onChange={this.props.handleShowPointChange}
               />
             </div>
@@ -72,7 +68,6 @@ export class MetricsPlotControls extends React.Component {
                 min={0}
                 max={1.3}
                 handleLineSmoothChange={_.debounce(this.props.handleLineSmoothChange, 500)}
-                defaultValue={initialLineSmoothness}
               />
             </div>
             <div className='block-control'>
@@ -109,7 +104,6 @@ export class MetricsPlotControls extends React.Component {
           <Switch
             checkedChildren='On'
             unCheckedChildren='Off'
-            defaultChecked={yAxisLogScale}
             onChange={this.props.handleYAxisLogScaleChange}
           />
         </div>

@@ -10,6 +10,7 @@ import {
   addExperimentTagsToState,
   createPendingApi,
   emptyState} from "../test-utils/ReduxStoreFixtures";
+import Utils from '../utils/Utils';
 import {getUUID} from "../Actions";
 import {Spinner} from "./Spinner";
 import { ExperimentViewPersistedState } from '../sdk/MlflowLocalStorageMessages';
@@ -42,7 +43,6 @@ const getExperimentViewMock = () => {
     handleLoadMoreRuns={jest.fn()}
     orderByKey={null}
     orderByAsc={false}
-    setExperimentTagApi={jest.fn()}
     location={{pathname: "/"}}
   />);
 };
@@ -75,6 +75,13 @@ test("ExperimentView will show spinner if isLoading prop is true", () => {
     persistedState: new ExperimentViewPersistedState({ showMultiColumns: false }).toJSON(),
   });
   expect(wrapper.find(Spinner)).toHaveLength(1);
+});
+
+test("Page title is set", () => {
+  const mockUpdatePageTitle = jest.fn();
+  Utils.updatePageTitle = mockUpdatePageTitle;
+  getExperimentViewMock();
+  expect(mockUpdatePageTitle.mock.calls[0][0]).toBe("Default - MLflow Experiment");
 });
 
 // mapStateToProps should only be run after the call to getExperiment from ExperimentPage is

@@ -32,7 +32,7 @@ const EMPTY_CELL_PLACEHOLDER = '-';
 
 export class ExperimentRunsTableMultiColumnView2 extends React.Component {
   static propTypes = {
-    experimentId: PropTypes.string,
+    experimentId: PropTypes.number,
     runInfos: PropTypes.arrayOf(RunInfo).isRequired,
     // List of list of params in all the visible runs
     paramsList: PropTypes.arrayOf(Array).isRequired,
@@ -420,7 +420,6 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
           onColumnGroupOpened={this.persistGridState}
           suppressRowClickSelection
           suppressScrollOnNewData // retain scroll position after nested run toggling operations
-          suppressFieldDotNotation
           enableCellTextSelection
           frameworkComponents={frameworkComponents}
           fullWidthCellRendererFramework={FullWidthCellRenderer}
